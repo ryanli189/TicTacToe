@@ -11,7 +11,7 @@ def play(clientSocket):
     return message
 
 #Set up client
-serverName = '10.220.66.211'
+serverName = '192.168.0.6'
 serverPort = 2019
 clientSocket = socket(AF_INET, SOCK_STREAM)
 clientSocket.connect((serverName,serverPort))
@@ -31,11 +31,14 @@ while True: #Matchup simulation
 
     #If going second
     if (name + ' is second') in gameRoundInfo:
+        print("Going second")
         print(clientSocket.recv(1024).decode()) #Print other player's move
 
     while True: #Game simulation
         #Play
-        print(clientSocket.recv(1024).decode())
+        print("C1")
+        #print(clientSocket.recv(1024).decode())
+        print("Should be playing now")
         message = play(clientSocket)
         while 'Error' in message:
             message = play(clientSocket)
