@@ -3,8 +3,11 @@ import random
 
 players = []  #list containing all PLayer objects
 
+welcomeMsg = 'Welcome to TicTacToe! Please type your name and press enter.'
+inQueueMsg = 'Please wait. Looking for another player.'
 invalidMoveError = 'Error: invalid move. Choose a valid location.'
 yourTurnMsg = "You're up. Choose a valid locaiton to place a piece."
+endOptionMsg = 'Enter "Q" to quit. Enter "R" for a rematch.'
 
 def printLeaderboard:
     message = '''Top 10 Leaderboard:
@@ -22,10 +25,15 @@ def printLeaderboard:
         message += sortedPlayers[i].name + ' | ' + sortedPlayers[i].winCount + ' | ' + sortedPlayers[i].gameCount + '\n'
     return message
 
+#Send message to player
+def sendMessage(connectionSocket, message):
+    connectionSocket.send(message.encode())
+    #connectionSocket.send(message.encode())
+
 #Send message to player 1 and player 2
 def broadcast(player1, player2, message):
-    player1.connectionSocket.send(message.encode())
-    player2.connectionSocket.send(message.encode())
+    sendMessage(player1.connectionSocket)
+    sendMessage(player2.connectionSocket)
 
 #Used to keep track of player name, wins, and connection socket
 class Player:
@@ -94,12 +102,15 @@ print('The server is ready to receive')
 
 #Get first client/player
 connectionSocket, addr = serverSocket.accept()
+sendMessage(connectionSocket, welcomeMsg)
 name = connectionSocket.recv(1024).decode()
 print(name +' has connected')
 player[0] = Player(name, connectionSocket)
+sendMessage(connectionSocket, inQueueMsg)
 
 #Get second client/player
 connectionSocket, addr = serverSocket.accept()
+sendMessage(connectionSocket, welcomeMsg)
 name = connectionSocket.recv(1024).decode()
 print(name +' has connected')
 player[1] = Player(name, connectionSocket)
@@ -111,10 +122,11 @@ broadcast(player[0], player[1], message)
 game = Board()
 
 #TODO OPTIONAL make this and the previous able to be implemented with more users
+#TODO Mechanism for saving and loging people back in
 p1 = 0
 p2 = 1
 
-while True: #Runs through while loop until application ends
+while True: #Runs through while loop until one or both players quit
     gameOver = False
     message = player[p1].name + ' is first (X). ' player[p2].name + ' is second (O).'
     broadcast(player[p1], player[p2], message)
@@ -127,26 +139,24 @@ while True: #Runs through while loop until application ends
 
         if turnCounter % 2 == 0:
             #Player 1 inputs moves until valid move
-            player[p1].connectionSocket.send(yourTurnMsg.encode())
+            sendMessage(player[p1].connectionSocket, yourTurnMsg)
             while True:
                 p1_x = player[p1].connectionSocket.recv(1024).decode()
                 p1_y = player[p1].connectionSocket.recv(1024).decode()
                 if game.placeX(p1_x, p1_y): #If placed on valid location move on
                     break
                 #If not place on valid location send error message and repeat
-                player[p1].connectionSocket.send(invalidMoveError())
+                sendMessage(player[p1].connectionSocket, invalidMoveError)
         else:
             #Player 2 inputs moves until valid move
-            player[p1].connectionSocket.send(yourTurnMsg.encode())
+            sendMessage(player[p2].connectionSocket, yourTurnMsg)
             while True:
                 p2_x = player[p2].connectionSocket.recv(1024).decode()
                 p2_y = player[p2].connectionSocket.recv(1024).decode()
                 if game.placeO(p2_x, p2_y): #If placed on valid location move on
                     break
                 #If not place on valid location send error message and repeat
-                player[p2].connectionSocket.send(invalidMoveError())
-        #Print new board
-        broadcast(player[p1], player[p2], game.printBoard())
+                sendMessage(player[p2].connectionSocket, invalidMoveError)
         turnCounter += 1
 
         if gameWon('X'):
@@ -154,16 +164,28 @@ while True: #Runs through while loop until application ends
             player[p1].addWin()
             message = 'Game Over. ' + player[p1].name + ' wins.'
             broadcast(player[p1], player[p2], message)
+
             #First player will now go second
             temp = p1
             p1 = p2
             p2 = p1
-            break
+
         if gameWon('0'):
             gameOver = True
             player[p2].addWin()
             message = 'Game Over. ' + player[p2].name + ' wins.'
             broadcast(player[p1], player[p2], message)
-            break
-connectionSocket1.close()
-connectionSocket2.close()
+
+        #Print new board
+        broadcast(player[p1], player[p2], game.printBoard())
+
+    #Option to end
+    broadcast(player[p1], player[p2], endOptionMsg)
+    p1Response = player[p1].connectionSocket.recv(1024).decode()
+    p2Response = player[p2].connectionSocket.recv(1024).decode()
+    if 'Q' in p1Response:
+        player[p1].connectionSocket.close()
+    if 'Q' in p2Response:
+        player[p2]connectionSocket.close()
+    if 'Q' in p1Response or 'Q' in p2Response:
+        break
