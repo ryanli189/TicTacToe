@@ -11,40 +11,8 @@ def play(clientSocket):
     y = input('Enter row number (0, 1, or 2) 0 being the top most row\n... ')
     clientSocket.send(y.encode())
 
-# print(clientSocket.recv(1024).decode()) #Receive initial welcome message
-# name = input('... ') #Input username
-# clientSocket.send(name.encode())
-
-# message = clientSocket.recv(1024).decode()
-# print(message)
-# if 'Please wait' in message: #If first player to join wait for second and then recieve matchup information
-#     print(clientSocket.recv(1024).decode())
-
-# while True: #Matchup simulation
-#     gameRoundInfo = clientSocket.recv(1024).decode()
-#     print(gameRoundInfo) #Print game round information
-
-#     #If going second
-#     if (name + ' is second') in gameRoundInfo:
-#         print("Going second")
-#         print(clientSocket.recv(1024).decode()) #Print other player's move
-
-#     while True: #Game simulation
-#         #Play
-#         message = play(clientSocket)
-#         while 'Error' in message: # If recevied error message keep playing until not error message
-#             message = play(clientSocket)
-        
-#         #Watch
-#         message = clientSocket.recv(1024).decode()
-#         print(message)
-#         if 'Game Over' in message:
-#             print(clientSocket.recv(1024).decode())
-#             break
-
-# clientSocket.close
-
 def receive(clientSocket):
+    global placePiece
     while True:
         try:
             msg = clientSocket.recv(1024).decode()
@@ -56,6 +24,7 @@ def receive(clientSocket):
             break
 
 def send(clientSocket):  
+    global placePiece
     while True:
         try:
             if placePiece:
@@ -76,19 +45,24 @@ def main():
     print(clientSocket.recv(1024).decode())
     # 2. Client enters name and sends it to chat server
     NAME = input('... ')
+    print("C1")
     clientSocket.send(NAME.encode())
+    print("C2")
 
     # Start the receiving thread
-    receive_thread = Thread(target=receive, args=(clientSocket))
+    receive_thread = Thread(target=receive, args=(clientSocket,))
+    print("C3")
     receive_thread.start()
-
+    print("C4")
     # Start the sending thread
-    send_thread = Thread(target=send, args=(clientSocket))
+    send_thread = Thread(target=send, args=(clientSocket,))
+    print("C5")
     send_thread.start()
+    print("C6")
 
     # Wait for child threads to stop
     receive_thread.join()
     send_thread.join()
-
+    print("c7")
 if __name__ == "__main__":
     main()
