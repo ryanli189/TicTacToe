@@ -3,6 +3,11 @@ from threading import Thread
 
 players = {}  #key socket, value Player
 
+#Set up server
+serverPort = 2019
+serverSocket = socket(AF_INET,SOCK_STREAM)
+serverSocket.bind(('',serverPort))
+
 # All default messages
 welcomeMsg = 'Welcome to TicTacToe! Please type your name and press enter.'
 inQueueMsg = 'Please wait. Looking for another player.'
@@ -141,9 +146,10 @@ class Board:
 game = Board() # create game board
 
 # Handles incomming connections
-def accept_incoming_connections(serverSocket):
+def accept_incoming_connections():
     i = 1
     while True:
+        print(i)
         # Set up a new connection from the chat client
         client, client_address = serverSocket.accept()
         print("%s:%s has connected." % client_address)
@@ -152,14 +158,15 @@ def accept_incoming_connections(serverSocket):
         name = client.recv(1024).decode()
         players[client] = Player(name, client)
         # If only one player is connected thus far
-        if i == 1:
+        if len(players) == 1:
             players[client].goingFirst()
             print('Waiting for players')
             client.send(inQueueMsg.encode())
-        if i == 2:
+        if len(players) > 1:
             players[client].goingSecond()
-        # Start client thread to handle the new connection
-        Thread(target=playGame, args=(client)).start()
+            # Start client thread to handle the new connection
+            Thread(target=playGame, args=(client,)).start()
+        print(i, '.2')
         i += 1
 
 def playGame(clientSocket):
@@ -177,11 +184,11 @@ def playGame(clientSocket):
                 if turnCounter % players[clientSocket].turnNum == 0:
                     sendMessage(clientSocket, yourTurnMsg)
                     while True:
-                        x = clientSocket.connectionSocket.recv(1024).decode()
-                        y = clientSocket.connectionSocket.recv(1024).decode()
+                        x = clientSocket.recv(1024).decode()
+                        y = clientSocket.recv(1024).decode()
                         if game.place(x, y, players[clientSocket].turnNum):
                             break
-                        sendMessage(clientSocket.connectionSocket, invalidMoveError)
+                        sendMessage(clientSocket, invalidMoveError)
                     # Print board
                     broadcast(game.printBoard())
                     # If player won
@@ -195,20 +202,16 @@ def playGame(clientSocket):
 
             #Option to end
             broadcast(endOptionMsg)
-            response = players[clientSocket].connectionSocket.recv(1024).decode()
+            response = clientSocket.recv(1024).decode()
             if 'Q' in response:
                 players[clientSocket].quit()
                 players[clientSocket].connectionSocket.close()
 
 def main():
-    #Set up server
-    serverPort = 2019
-    serverSocket = socket(AF_INET,SOCK_STREAM)
-    serverSocket.bind(('',serverPort))
     serverSocket.listen(1)
     print('The server is ready to receive')
 
-    acceptThread = Thread(target=accept_incoming_connections, args=(serverSocket,))
+    acceptThread = Thread(target=accept_incoming_connections)
     acceptThread.start()
     acceptThread.join()
 
