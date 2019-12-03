@@ -1,30 +1,53 @@
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 import sys
+import time
 
 placePiece = False
+invalidMove = True
+endOption = False
+
+welcomeMsg = 'Welcome to TicTacToe! Please type your name and press enter.'
+inQueueMsg = 'Please wait. Looking for another player.'
+invalidMoveError = 'Error: invalid move. Choose a valid location.'
+yourTurnMsg = "You're up. Choose a valid locaiton to place a piece."
+endOptionMsg = 'Enter "Q" to quit. Enter "R" (or any other character) for rematch.'
 
 # Set up client, connect to host
-HOST = input('Enter server name: ')
+HOST = input('Enter server name:\n... ')
 serverPort = 2019
 clientSocket = socket(AF_INET, SOCK_STREAM)
 clientSocket.connect((HOST,serverPort))
 
 #Make move
 def play():
-    x = input('Enter column number (0, 1, or 2) 0 being the left most column\n... ')
-    clientSocket.send(x.encode())
-    y = input('Enter row number (0, 1, or 2) 0 being the top most row\n... ')
-    clientSocket.send(y.encode())
+    global invalidMove
+    while True:
+        loc = input('... ')
+        clientSocket.send(loc.encode())
+        time.sleep(0.1)
+        if not invalidMove:
+            invalidMove = True
+            break
 
 def receive():
     global placePiece
+    global invalidMove
+    global yourTurnMsg
+    global invalidMoveError
+    global endOption
     while True:
         try:
             msg = clientSocket.recv(1024).decode()
-            if "You're up." in msg:
-                placePiece = True
             print(msg)
+            if yourTurnMsg in msg:
+                placePiece = True
+            elif endOptionMsg in msg:
+                endOption = True
+            elif "Error: invalid move." not in msg:
+                invalidMove = False
+            elif "Ending game." in msg:
+                clientSocket.close()
         except OSError:
             print("End")
             # Possibly client has left the chat.
@@ -32,8 +55,13 @@ def receive():
 
 def send():  
     global placePiece
+    global endOption
     while True:
         try:
+            if endOption:
+                choice = input('... ')
+                clientSocket.send(choice.encode())
+                endOption = False
             if placePiece:
                 play()
                 placePiece = False
@@ -47,25 +75,18 @@ def main():
     print(clientSocket.recv(1024).decode())
     # 2. Client enters name and sends it to chat server
     NAME = input('... ')
-    print("C1")
     clientSocket.send(NAME.encode())
-    print("C2")
 
     # Start the receiving thread
     receive_thread = Thread(target=receive)
-    print("C3")
     receive_thread.start()
-    print("C4")
     # Start the sending thread
     send_thread = Thread(target=send)
-    print("C5")
     send_thread.start()
-    print("C6")
 
     # Wait for child threads to stop
     receive_thread.join()
-    print("C7")
     send_thread.join()
-    print("C8")
+
 if __name__ == "__main__":
     main()

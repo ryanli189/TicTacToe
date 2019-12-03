@@ -2,7 +2,8 @@ from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 
 players = {}  #key socket, value Player
-
+turnCounter = 0
+gameOver = False
 #Set up server
 serverPort = 2019
 serverSocket = socket(AF_INET,SOCK_STREAM)
@@ -13,30 +14,14 @@ welcomeMsg = 'Welcome to TicTacToe! Please type your name and press enter.'
 inQueueMsg = 'Please wait. Looking for another player.'
 invalidMoveError = 'Error: invalid move. Choose a valid location.'
 yourTurnMsg = "You're up. Choose a valid locaiton to place a piece."
-endOptionMsg = 'Enter "Q" to quit. Enter "R" for a rematch.'
-
-# TODO: adapt
-def printLeaderboard():
-    message = '''Top 10 Leaderboard:
-    Name | Win Count | Game Count
-    '''
-    #Sort by win number
-    sortedPlayers = sorted(players, key = lambda player: player.winCount)
-    
-    #Find if number of players is less than 10
-    leaderboardCount = 10
-    if sortedPlayers.count() < 10:
-        leaderboardCount = sortedPlayers.count()
-    
-    for i in range(leaderboardCount):
-        message += sortedPlayers[i].name + ' | ' + sortedPlayers[i].winCount + ' | ' + sortedPlayers[i].gameCount + '\n'
-    return message
+endOptionMsg = 'Enter "Q" to quit. Enter "R" (or any other character) for rematch.'
 
 def getMatchUpInfo():
     message = ''
     for sock in players:
-        message += players[sock].name + ' (' + str(players[sock].winCount) + 'wins) vs. '
-    return message[:-4]
+        message += players[sock].name + ' (' + str(players[sock].winCount) + ' wins) vs. '
+    message += message[:-4] + '\n'
+    return message
 
 def checkPlayersActive():
     for sock in players:
@@ -48,7 +33,7 @@ def swapRoles():
     for sock in players:
         if players[sock].turnNum == 1:
             players[sock].goingSecond()
-        elif players[sock].turnNum == 2:
+        elif players[sock].turnNum == 0:
             players[sock].goingFirst()
 
 #Send message to player
@@ -70,6 +55,7 @@ class Player:
     turnNum = 0
     winCount = 0
     gameCount = 0
+    name = ''
     def __init__(self, name, connectionSocket):
         self.name = name
         self.connectionSocket = connectionSocket
@@ -85,61 +71,82 @@ class Player:
     def goingFirst(self):
         self.turnNum = 1
     def goingSecond(self):
-        self.turnNum = 2
+        self.turnNum = 0
     def getTurn(self):
         if self.turnNum == 1:
-            return 'Going first (X)'
-        elif self.turnNum == 2:
-            return 'Going second (O)'
+            return 'Going first (X)\n'
+        elif self.turnNum == 0:
+            return 'Going second (O)\n'
         else:
-            return 'Error! Turn number has not been picked yet.'
+            return 'Error! Turn number has not been picked yet.\n'
 
 #Game board: new board, place x or o, print board out
 class Board:
     def  __init__(self):
         self.wipeBoard()
     def wipeBoard(self):
-        self.tiles = [['-', '-', '-'], ['-', '-', '-'], ['-', '-', '-']]
-    def placeX(self, x_string, y_string):
-        x = int(x_string)
-        y = int(y_string)
-        if x < len(self.tiles) and y < len(self.tiles):
-            if self.tiles[y][x] == '-':
-                self.tiles[y][x] = 'X'
+        self.placementTiles = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9']]
+    def placeX(self, x, y):
+        # x = int(x_string)
+        # y = int(y_string)
+        if x < len(self.placementTiles) and y < len(self.placementTiles):
+            if self.placementTiles[y][x] != 'O' and self.placementTiles[y][x] != 'X':
+                self.placementTiles[y][x] = 'X'
                 return True
         return False
-    def placeO(self, x_string, y_string):
-        x = int(x_string)
-        y = int(y_string)
-        if x < len(self.tiles) and y < len(self.tiles):
-            if self.tiles[y][x] == '-':
-                self.tiles[y][x] = 'O'
+    def placeO(self, x, y):
+        # x = int(x_string)
+        # y = int(y_string)
+        #print("Checkpoint 3")
+        if x < len(self.placementTiles) and y < len(self.placementTiles):
+            #print("Checkpoint 4")
+            if self.placementTiles[y][x] != 'O' and self.placementTiles[y][x] != 'X':
+                self.placementTiles[y][x] = 'O'
                 return True
         return False
-    def place(self, x, y, XorO):
+    def place(self, loc, XorO):
+        # Corrolate location with coordinates
+        loc = int(loc)
+        if loc == 1 or loc == 4 or loc == 7:
+            x = 0
+        elif loc == 2 or loc == 5 or loc == 8:
+            x = 1
+        elif loc == 3 or loc == 6 or loc == 9:
+            x = 2
+        else:
+            return False
+        #print("Checkpoint 1")
+        if loc == 1 or loc == 2 or loc == 3:
+            y = 0
+        elif loc == 4 or loc == 5 or loc == 6:
+            y = 1
+        elif loc == 7 or loc == 8 or loc == 9:
+            y = 2
+        #print("Checkpoint 2,, loc (" + str(loc) + "), x (" + str(x) + "), y (" + str(y) + ")")
+        # Place proper piece, X or Y
         if XorO == 1:
             return self.placeX(x,y)
-        elif XorO == 2:
+        elif XorO == 0:
             return self.placeO(x,y)
-    def printBoard(self):
-        return '--------\n' + '\n'.join([' '.join(['{:2}'.format(item) for item in row]) for row in self.tiles]) + '\n--------\n'
+    def printPlacementBoard(self):
+        return '--------\n' + '\n'.join([' '.join(['{:2}'.format(item) for item in row]) for row in self.placementTiles]) + '\n--------\n'
     def gameWon(self, playerNum):
         if playerNum == 1:
             token = 'X'
-        elif playerNum == 2:
+        elif playerNum == 0:
             token = 'O'
         #Check horizontal
-        for i in range(len(self.tiles)):
-            if self.tiles[i][0] == token and self.tiles[i][1] == token and self.tiles[i][2] == token:
+        for i in range(len(self.placementTiles)):
+            if self.placementTiles[i][0] == token and self.placementTiles[i][1] == token and self.placementTiles[i][2] == token:
                 return True
         #Check veritical
-        for i in range(len(self.tiles[0])):
-            if self.tiles[0][i] == token and self.tiles[1][i] == token and self.tiles[2][i] == token:
+        for i in range(len(self.placementTiles[0])):
+            if self.placementTiles[0][i] == token and self.placementTiles[1][i] == token and self.placementTiles[2][i] == token:
                 return True
         #Check diagonal
-        if self.tiles[0][0] == token and self.tiles[1][1] == token and self.tiles[2][2] == token:
+        if self.placementTiles[0][0] == token and self.placementTiles[1][1] == token and self.placementTiles[2][2] == token:
             return True
-        if self.tiles[0][2] == token and self.tiles[1][1] == token and self.tiles[2][0] == token:
+        if self.placementTiles[0][2] == token and self.placementTiles[1][1] == token and self.placementTiles[2][0] == token:
             return True
         return False
 
@@ -147,16 +154,14 @@ game = Board() # create game board
 
 # Handles incomming connections
 def accept_incoming_connections():
-    i = 1
     while True:
-        print(i)
         # Set up a new connection from the chat client
         client, client_address = serverSocket.accept()
-        print("%s:%s has connected." % client_address)
         # Send welcome message
         client.send(welcomeMsg.encode())
         name = client.recv(1024).decode()
         players[client] = Player(name, client)
+        print(name + " (%s:%s) has connected." % client_address)
         # If only one player is connected thus far
         if len(players) == 1:
             players[client].goingFirst()
@@ -164,48 +169,56 @@ def accept_incoming_connections():
             client.send(inQueueMsg.encode())
         if len(players) > 1:
             players[client].goingSecond()
-            # Start client thread to handle the new connection
-            Thread(target=playGame, args=(client,)).start()
-        print(i, '.2')
-        i += 1
+            # Start client thread for each client to handle the new connection
+            for aClient in players:
+                Thread(target=playGame, args=(aClient,)).start()
 
 def playGame(clientSocket):
-    while True: #Runs thorugh the loop until server is shut down
-        while checkPlayersActive(): #Runs through while loop until one or both players quit, this is a matchup loop
-            # Set up for start of new game
-            gameOver = False
-            turnCounter = 1
-            players[clientSocket].addGame()
-            #Send game match up message to both players to start game
-            broadcast(getMatchUpInfo())
-            sendMessage(clientSocket, players[clientSocket].getTurn())
-            while not gameOver: #Runs through while loop until current game ends, this is a game loop
-                # If it is player's turn to play
-                if turnCounter % players[clientSocket].turnNum == 0:
-                    sendMessage(clientSocket, yourTurnMsg)
-                    while True:
-                        x = clientSocket.recv(1024).decode()
-                        y = clientSocket.recv(1024).decode()
-                        if game.place(x, y, players[clientSocket].turnNum):
-                            break
-                        sendMessage(clientSocket, invalidMoveError)
-                    # Print board
-                    broadcast(game.printBoard())
-                    # If player won
-                    if game.gameWon(players[clientSocket].turnNum):
-                        gameOver = True
-                        players[clientSocket].addWin()
-                        broadcast('\nGame over. ' + players[clientSocket].name + ' wins.')
-                        if players[clientSocket].turnNum == 1:
-                            swapRoles()
+    while checkPlayersActive(): #Runs through while loop until one or both players quit, this is a matchup loop
+        # Set up for start of new game
+        global turnCounter
+        global gameOver
+        turnCounter = 1
+        gameOver = False
+        players[clientSocket].addGame()
+        game.wipeBoard()
+        #Send game match up message to both players to start game
+        sendMessage(clientSocket, getMatchUpInfo())
+        sendMessage(clientSocket, players[clientSocket].getTurn())
+        #Print template board for first player
+        if players[clientSocket].turnNum == 1:
+            sendMessage(clientSocket, game.printPlacementBoard())
+        while not gameOver: #Runs through while loop until current game ends, this is a game loop
+            if turnCounter % 2 == players[clientSocket].turnNum:
+                sendMessage(clientSocket, yourTurnMsg)
+                #sendMessage(clientSocket, game.printPlacementBoard())
+                while True:
+                    loc = clientSocket.recv(1024).decode()
+                    if game.place(loc, players[clientSocket].turnNum):
+                        break
+                    sendMessage(clientSocket, invalidMoveError)
+                # Print board
+                broadcast( game.printPlacementBoard())
+                # If player won
+                if game.gameWon(players[clientSocket].turnNum):
+                    gameOver = True
+                    players[clientSocket].addWin()
+                    broadcast('\nGame over. ' + players[clientSocket].name + ' wins.')
+                    if players[clientSocket].turnNum == 1:
+                        swapRoles()
                 turnCounter += 1
 
-            #Option to end
-            broadcast(endOptionMsg)
-            response = clientSocket.recv(1024).decode()
-            if 'Q' in response:
-                players[clientSocket].quit()
-                players[clientSocket].connectionSocket.close()
+        #Option to end
+        broadcast(endOptionMsg)
+        response = clientSocket.recv(1024).decode()
+        if 'Q' in response:
+            name = players[clientSocket].name
+            print(name, 'has quit.')
+            clientSocket.close()
+            del players[clientSocket]
+            msg = name, 'has quit. Ending game.'
+            broadcast(msg)
+            break
 
 def main():
     serverSocket.listen(1)
