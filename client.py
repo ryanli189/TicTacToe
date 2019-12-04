@@ -25,7 +25,7 @@ def play():
     while True:
         loc = input('... ')
         clientSocket.send(loc.encode())
-        time.sleep(0.1)
+        time.sleep(0.5)
         if not invalidMove:
             invalidMove = True
             break
@@ -47,7 +47,7 @@ def receive():
             elif "Error: invalid move." not in msg:
                 invalidMove = False
             elif "Ending game." in msg:
-                clientSocket.close()
+                sys.exit()
         except OSError:
             print("End")
             # Possibly client has left the chat.

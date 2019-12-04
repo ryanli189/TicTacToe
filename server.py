@@ -1,5 +1,6 @@
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
+import sys
 
 players = {}  #key socket, value Player
 turnCounter = 0
@@ -209,15 +210,15 @@ def playGame(clientSocket):
                 turnCounter += 1
 
         #Option to end
-        broadcast(endOptionMsg)
+        sendMessage(clientSocket, endOptionMsg)
         response = clientSocket.recv(1024).decode()
         if 'Q' in response:
+            players[clientSocket].quit()
             name = players[clientSocket].name
-            print(name, 'has quit.')
-            clientSocket.close()
-            del players[clientSocket]
-            msg = name, 'has quit. Ending game.'
+            print(name + ' has quit.')
+            msg = name + ' has quit. Ending game.'
             broadcast(msg)
+            sys.exit()
             break
 
 def main():
@@ -227,7 +228,6 @@ def main():
     acceptThread = Thread(target=accept_incoming_connections)
     acceptThread.start()
     acceptThread.join()
-
     serverSocket.close()
 
 if __name__ == "__main__":
