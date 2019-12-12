@@ -35,5 +35,5 @@ WILL BE UPDATED 12/12 BEFORE MIDNIGHT
 Lab Assignment #4 ( Chatroom w/ Socket Programming ) - Professor Pham
 
 ## Team members
-*Kai Arsenault
-*Ryan Li
+* Kai Arsenault
+* Ryan Li
