@@ -29,7 +29,7 @@ a server-client architecture with socket programming.
 3. Server that will keep track of their win-loss stats and store it on the server.
 
 ## Demo Video
-WILL BE UPDATED 12/12 BEFORE MIDNIGHT
+https://www.youtube.com/watch?v=7gb5Pvl6dnM
 
 ## References
 Lab Assignment #4 ( Chatroom w/ Socket Programming ) - Professor Pham
